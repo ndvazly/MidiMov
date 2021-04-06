@@ -10,6 +10,7 @@ from functools import lru_cache
 save_event = None
 interrupted = False
 clip_start = 0
+start_time = 0
 
 def imdisplay(imarray, screen=None):
     """Splashes the given image array on the given pygame screen."""
@@ -50,7 +51,14 @@ def custom_preview(
     imdisplay(first_frame, screen)
 
     t0 = time.time()
-    for t in np.arange(1.0 / fps, clip.duration - 0.001 - clip_start, 1.0 / fps):
+    step_size = 1.0 / fps
+    frame_num = (t0 - start_time) / step_size
+    print(f'step size: {step_size}\n #frames: {round(frame_num)}')
+    # in_point = round(how_many_frames) * step_size
+    in_point = round(frame_num)
+    # print(in_point)
+    AddKeyFrame(in_point,clip)
+    for t in np.arange(step_size, clip.duration - 0.001 - clip_start, step_size):
         for clip_event in pg.event.get():
             if clip_event.type == pg.KEYDOWN:
                 interrupted = True
@@ -70,6 +78,7 @@ res = (540, 960)
 clips = []
 clip_names = []
 clips_first_frame = []
+keyframes = {}
 clip_keys = {122: 0, 120: 1, 99:2, 118:3, 98:4, 97:5, 115:6, 100:7, 102:8}
 
 
@@ -84,6 +93,42 @@ def LoadFolder(path):
         clips.append(VideoFileClip(clip_names[clip_i], target_resolution=res, audio=False))
         # clips[clip_i] = clips[clip_i].subclip()
         clips_first_frame.append(clips[clip_i].get_frame(clip_start))
+
+
+def AddKeyFrame(in_time, clip_object):
+    keyframes[in_time] = clip_object
+    print(f'Added frame {len(keyframes)} | in: {in_time} clip: {clip_object}')
+
+
+def StartRecording():
+    global start_time
+    start_time = time.time()
+
+
+def PlayRecording():
+    global keyframes
+    frame_rate = 30
+    step = (1/frame_rate)
+    duration = 300
+    playhead = 0
+    print('Playing Sequence')
+    # for t in np.arange(0, duration - 0.001, step_size):
+    for p in range(duration):
+        if keyframes.get(p):
+            print(f'{p}: play {keyframes[p]}')
+            # custom_preview(screen=screen, clip=keyframes[p], first_frame=clips_first_frame[0], fps=frame_rate)
+        time.sleep(step)
+
+    # print (keyframes)
+    # while playhead < duration:
+    #     if keyframes.get(playhead):
+    #         print(f'{playhead}: play {keyframes[playhead]}')
+        # else:
+        #     print(playhead)
+        # playhead += step
+    # for t in np.arange(0, duration, step):
+    #     if t in keyframes:
+    #         print(f'{t}: play {keyframes[t]}')
 
 
 def HandleEvent(event):
@@ -107,6 +152,10 @@ screen = pg.display.set_mode(clips[0].size, 0)
 pg.display.init()
 pg.display.update()
 
+rec_btn = tk.Button(root,text="Rec", command=StartRecording)
+rec_btn.pack()
+play_btn = tk.Button(root,text="Play", command=PlayRecording)
+play_btn.pack()
 
 while True:
     pg.display.update()
